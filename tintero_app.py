@@ -17,62 +17,114 @@ except ImportError:
 # ──────────────────────────────────────────────
 # CONFIG
 # ──────────────────────────────────────────────
-APP_PASSWORD = "tintero2024"
-DB_PATH      = "tintero.db"
-ASSETS       = Path("assets")
+DB_PATH    = "tintero.db"
+ASSETS     = Path("assets")
+CFG_PATH   = Path("tintero_config.json")
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
 
-# Paleta nueva (imagen de referencia)
-C_NAVY   = "#1C223A"   # fondo principal (azul marino oscuro)
-C_NAVY2  = "#242b47"   # fondo secundario / cards
-C_CARD   = "#2d3657"   # card interior
-C_CARD2  = "#1e2840"   # card más oscura
-C_GOLD   = "#EDA745"   # acento dorado
-C_CREAM  = "#F0EADC"   # texto / beige claro
-C_MUTED  = "#8892b0"   # texto secundario
+# ── Paleta ────────────────────────────────────
+C_NAVY   = "#1C223A"
+C_NAVY2  = "#242b47"
+C_CARD   = "#2d3657"
+C_CARD2  = "#1e2840"
+C_GOLD   = "#EDA745"
+C_CREAM  = "#F0EADC"
+C_MUTED  = "#8892b0"
 C_GREEN  = "#4caf82"
 C_RED    = "#e05c5c"
 C_BLUE   = "#5b9bd5"
 C_ORANGE = "#e0903a"
+C_LINE   = "#2e3a5c"   # separadores sutiles
 
+# ── Tipografía ────────────────────────────────
+# Cormorant Garamond: elegante, literario, serif de alta calidad
+# Nunito: redondo, legible, moderno sin ser genérico
+# Si no están instaladas, cae en Georgia / Helvetica gracefully
+FONT_DISPLAY = "Cormorant Garamond"   # títulos, headings
+FONT_BODY    = "Nunito"               # UI general
+FONT_MONO    = "Consolas"             # datos numéricos
+
+def F(size, weight="normal", family=FONT_BODY):
+    """Shorthand para CTkFont con fallback."""
+    return ctk.CTkFont(family=family, size=size,
+                       weight="bold" if weight=="bold" else "normal")
+
+def F_title(size=18): return F(size, "bold", FONT_DISPLAY)
+def F_body(size=13):  return F(size, "normal", FONT_BODY)
+def F_bold(size=13):  return F(size, "bold",   FONT_BODY)
+def F_data(size=13):  return F(size, "normal", FONT_MONO)
+
+# ── Config helpers ────────────────────────────
+def _load_cfg() -> dict:
+    if CFG_PATH.exists():
+        try: return json.loads(CFG_PATH.read_text("utf-8"))
+        except: pass
+    return {}
+
+def _save_cfg(d: dict):
+    CFG_PATH.write_text(json.dumps(d, indent=2, ensure_ascii=False), "utf-8")
+
+def get_password() -> str:
+    return _load_cfg().get("password", "")
+
+def set_password(pw: str):
+    d = _load_cfg(); d["password"] = pw; _save_cfg(d)
+
+def is_first_run() -> bool:
+    return get_password() == ""
+
+# ── Color utils ───────────────────────────────
 def _dark(h):
     r,g,b=int(h[1:3],16),int(h[3:5],16),int(h[5:7],16)
     return "#{:02x}{:02x}{:02x}".format(max(0,r-28),max(0,g-28),max(0,b-28))
 
+def _alpha_blend(fg, bg, alpha=0.15):
+    """Simula color con opacidad sobre fondo."""
+    fr,fg2,fb=int(fg[1:3],16),int(fg[3:5],16),int(fg[5:7],16)
+    br,bg3,bb=int(bg[1:3],16),int(bg[3:5],16),int(bg[5:7],16)
+    return "#{:02x}{:02x}{:02x}".format(
+        int(fr*alpha+br*(1-alpha)), int(fg2*alpha+bg3*(1-alpha)), int(fb*alpha+bb*(1-alpha)))
+
 # ──────────────────────────────────────────────
 # HELPERS UI
 # ──────────────────────────────────────────────
-def lbl(p, text, size=13, color=C_CREAM, bold=False, **kw):
+def lbl(p, text, size=13, color=C_CREAM, bold=False, family=FONT_BODY, **kw):
     return ctk.CTkLabel(p, text=text, text_color=color,
-                        font=ctk.CTkFont(size=size, weight="bold" if bold else "normal"), **kw)
+                        font=F(size, "bold" if bold else "normal", family), **kw)
+
+def title_lbl(p, text, size=20, color=C_CREAM, **kw):
+    """Label con fuente display (Cormorant Garamond)."""
+    return ctk.CTkLabel(p, text=text, text_color=color, font=F_title(size), **kw)
 
 def inp(p, ph="", w=220, **kw):
     return ctk.CTkEntry(p, placeholder_text=ph, width=w,
-                        fg_color=C_CARD2, border_color=C_MUTED,
-                        text_color=C_CREAM, placeholder_text_color=C_MUTED, **kw)
+                        fg_color=C_CARD2, border_color=C_LINE,
+                        text_color=C_CREAM, placeholder_text_color=C_MUTED,
+                        font=F_body(13), **kw)
 
 def combo(p, vals, w=200, **kw):
     return ctk.CTkComboBox(p, values=vals, width=w,
-                           fg_color=C_CARD2, border_color=C_MUTED,
+                           fg_color=C_CARD2, border_color=C_LINE,
                            button_color=C_CARD, dropdown_fg_color=C_CARD,
-                           text_color=C_CREAM, dropdown_text_color=C_CREAM, **kw)
+                           text_color=C_CREAM, dropdown_text_color=C_CREAM,
+                           font=F_body(13), dropdown_font=F_body(13), **kw)
 
 def pbtn(p, text, cmd, color=C_GOLD, w=160):
     return ctk.CTkButton(p, text=text, command=cmd, width=w,
                          fg_color=color, hover_color=_dark(color),
                          text_color=C_NAVY, corner_radius=8,
-                         font=ctk.CTkFont(weight="bold"))
+                         font=F_bold(13))
 
 def gbtn(p, text, cmd, color=C_MUTED, w=110):
-    return ctk.CTkButton(p, text=text, command=cmd, width=w, height=26,
+    return ctk.CTkButton(p, text=text, command=cmd, width=w, height=28,
                          fg_color="transparent", hover_color=C_CARD,
                          text_color=color, border_width=1, border_color=color,
-                         corner_radius=6)
+                         corner_radius=6, font=F_body(12))
 
 def sep(p):
-    return ctk.CTkFrame(p, height=1, fg_color="#3a4466")
+    return ctk.CTkFrame(p, height=1, fg_color=C_LINE)
 
 def cframe(p, **kw):
     return ctk.CTkFrame(p, fg_color=C_CARD2, corner_radius=10, **kw)
@@ -81,6 +133,10 @@ def sframe(p, **kw):
     return ctk.CTkScrollableFrame(p, fg_color="transparent",
                                   scrollbar_button_color=C_CARD,
                                   scrollbar_button_hover_color=C_MUTED, **kw)
+
+def accentbar(p, color=C_GOLD, h=3):
+    """Barra decorativa de acento."""
+    return ctk.CTkFrame(p, height=h, fg_color=color, corner_radius=2)
 
 def load_logo(fn, sz=(50,50)):
     if not HAS_PIL: return None
@@ -168,7 +224,6 @@ class DB:
     def run(self, sql, p=()):
         with sqlite3.connect(DB_PATH) as c:
             c.execute(sql, p)
-            c.commit()
 
     # ── Students ──────────────────────────────
     def list_students(self, stype=None):
@@ -628,7 +683,7 @@ class AccountsTab(ctk.CTkFrame):
 
     def _build(self):
         top=cframe(self); top.pack(fill="x",padx=10,pady=(10,4))
-        lbl(top,"Cuenta corriente",size=14,bold=True,color=C_GOLD).pack(anchor="w",padx=12,pady=(10,4))
+        title_lbl(top, "Cuenta corriente", size=15, color=C_GOLD).pack(anchor="w",padx=12,pady=(10,4))
 
         r1=row(top); r1.pack(fill="x",padx=12,pady=2)
         lbl(r1,"Alumno:",size=12,color=C_MUTED).pack(side="left")
@@ -705,7 +760,7 @@ class StoriesTab(ctk.CTkFrame):
 
     def _build(self):
         form=cframe(self); form.pack(fill="x",padx=10,pady=(10,4))
-        lbl(form,"Registrar cuento",size=14,bold=True,color=C_GOLD).pack(anchor="w",padx=12,pady=(10,4))
+        title_lbl(form, "Registrar cuento", size=15, color=C_GOLD).pack(anchor="w",padx=12,pady=(10,4))
         r1=row(form); r1.pack(fill="x",padx=12,pady=2)
         lbl(r1,"Alumno:",size=12,color=C_MUTED).pack(side="left")
         self.dd_s=combo(r1,[],w=220); self.dd_s.pack(side="left",padx=8)
@@ -801,7 +856,7 @@ class EventsTab(ctk.CTkFrame):
 
     def _build(self):
         form=cframe(self); form.pack(fill="x",padx=10,pady=(10,4))
-        lbl(form,"Nuevo evento",size=14,bold=True,color=C_GOLD).pack(anchor="w",padx=12,pady=(10,4))
+        title_lbl(form, "Nuevo evento", size=15, color=C_GOLD).pack(anchor="w",padx=12,pady=(10,4))
         r1=row(form); r1.pack(fill="x",padx=12,pady=2)
         self.e_title=inp(r1,"Título *",260); self.e_title.pack(side="left",padx=(0,8))
         self.dd_type=combo(r1,list(self.TYPES.keys()),w=160)
@@ -841,18 +896,9 @@ class EventsTab(ctk.CTkFrame):
         title=self.e_title.get().strip(); date=self.e_date.get().strip()
         if not title or not date:
             messagebox.showwarning("Error","Título y fecha obligatorios"); return
-        # Buscar el tipo por substring para tolerar variaciones del combo
-        sel = self.dd_type.get()
-        etype = "evento"
-        for key, val in self.TYPES.items():
-            if key in sel or sel in key:
-                etype = val; break
-        time_val  = self.e_time.get().strip()
-        loc_val   = self.e_loc.get().strip()
-        desc_val  = self.e_desc.get().strip()
-        self.db.add_event(title, date, time_val, loc_val, desc_val, etype)
-        for e in [self.e_title, self.e_date, self.e_time, self.e_loc, self.e_desc]:
-            e.delete(0, "end")
+        self.db.add_event(title,date,self.e_time.get(),self.e_loc.get(),
+                          self.e_desc.get(),self.TYPES.get(self.dd_type.get(),"evento"))
+        for e in [self.e_title,self.e_date,self.e_time,self.e_loc,self.e_desc]: e.delete(0,"end")
         self.reload()
 
     def _del(self,eid):
@@ -870,7 +916,7 @@ class CopyClientsTab(ctk.CTkFrame):
 
     def _build(self):
         form=cframe(self); form.pack(fill="x",padx=10,pady=(10,4))
-        lbl(form,"Nuevo cliente",size=14,bold=True,color=C_GOLD).pack(anchor="w",padx=12,pady=(10,4))
+        title_lbl(form, "Nuevo cliente", size=15, color=C_GOLD).pack(anchor="w",padx=12,pady=(10,4))
         r1=row(form); r1.pack(fill="x",padx=12,pady=2)
         self.e_name=inp(r1,"Nombre *",200); self.e_name.pack(side="left",padx=(0,8))
         self.e_co=inp(r1,"Empresa",170); self.e_co.pack(side="left")
@@ -943,7 +989,7 @@ class CopyTasksTab(ctk.CTkFrame):
 
     def _build(self):
         form=cframe(self); form.pack(fill="x",padx=10,pady=(10,4))
-        lbl(form,"Nueva tarea",size=14,bold=True,color=C_GOLD).pack(anchor="w",padx=12,pady=(10,4))
+        title_lbl(form, "Nueva tarea", size=15, color=C_GOLD).pack(anchor="w",padx=12,pady=(10,4))
         r1=row(form); r1.pack(fill="x",padx=12,pady=2)
         lbl(r1,"Cliente:",size=12,color=C_MUTED).pack(side="left")
         self.dd_c=combo(r1,["Sin cliente"],w=220); self.dd_c.set("Sin cliente"); self.dd_c.pack(side="left",padx=8)
@@ -1028,63 +1074,133 @@ class App(ctk.CTk):
         self.title("El Tintero & Norte Copywriting")
         self.minsize(860, 580)
         self.configure(fg_color=C_NAVY)
-        # Centrar en pantalla
-        w, h = 1060, 720
+        self._center_window(1060, 720)
+        self.db = DB()
+        if is_first_run():
+            self._show_first_run()
+        else:
+            self._show_login()
+
+    def _center_window(self, w, h):
+        """Centra la ventana en el monitor activo, respetando DPI."""
         self.update_idletasks()
         sw = self.winfo_screenwidth()
         sh = self.winfo_screenheight()
-        x = (sw - w) // 2
-        y = (sh - h) // 2
+        x = max(0, (sw - w) // 2)
+        y = max(0, (sh - h) // 2 - 30)   # -30 para compensar barra de tareas
         self.geometry(f"{w}x{h}+{x}+{y}")
-        self.db=DB(); self._show_login()
 
-    # ── LOGIN ─────────────────────────────────
+    # ══════════════════════════════════════════
+    # PRIMER USO
+    # ══════════════════════════════════════════
+    def _show_first_run(self):
+        self._lf = ctk.CTkFrame(self, fg_color=C_NAVY)
+        self._lf.place(relx=0, rely=0, relwidth=1, relheight=1)
+
+        center = ctk.CTkFrame(self._lf, fg_color=C_CARD, corner_radius=20)
+        center.place(relx=0.5, rely=0.5, anchor="center")
+
+        logo = load_logo("Logo_El_Tintero.png", (100,100))
+        if logo:
+            ctk.CTkLabel(center, image=logo, text="").pack(pady=(28,6))
+
+        title_lbl(center, "El Tintero", size=28, color=C_CREAM).pack()
+        lbl(center, "Taller Literario", size=13, color=C_GOLD).pack(pady=(2,4))
+        accentbar(center, C_GOLD).pack(fill="x", padx=40, pady=(0,16))
+
+        lbl(center, "Primera configuración", size=15, bold=True, color=C_CREAM).pack()
+        lbl(center, "Creá tu contraseña de acceso", size=12, color=C_MUTED).pack(pady=(2,14))
+
+        self._fr_pw1 = ctk.CTkEntry(center, placeholder_text="Nueva contraseña", show="●",
+                                     width=300, fg_color=C_CARD2, border_color=C_LINE,
+                                     text_color=C_CREAM, placeholder_text_color=C_MUTED,
+                                     font=F_body(13))
+        self._fr_pw1.pack(pady=(0,8))
+        self._fr_pw2 = ctk.CTkEntry(center, placeholder_text="Repetir contraseña", show="●",
+                                     width=300, fg_color=C_CARD2, border_color=C_LINE,
+                                     text_color=C_CREAM, placeholder_text_color=C_MUTED,
+                                     font=F_body(13))
+        self._fr_pw2.pack(pady=(0,6))
+        self._fr_err = lbl(center, "", color=C_RED, size=12); self._fr_err.pack()
+        pbtn(center, "Crear contraseña y entrar", self._do_first_run, w=260).pack(pady=(8,28))
+
+    def _do_first_run(self):
+        p1 = self._fr_pw1.get()
+        p2 = self._fr_pw2.get()
+        if len(p1) < 4:
+            self._fr_err.configure(text="Mínimo 4 caracteres"); return
+        if p1 != p2:
+            self._fr_err.configure(text="Las contraseñas no coinciden"); return
+        set_password(p1)
+        self._lf.destroy()
+        self._build()
+
+    # ══════════════════════════════════════════
+    # LOGIN
+    # ══════════════════════════════════════════
     def _show_login(self):
-        self._lf=ctk.CTkFrame(self,fg_color=C_NAVY)
-        self._lf.place(relx=0,rely=0,relwidth=1,relheight=1)
-        center=ctk.CTkFrame(self._lf,fg_color=C_CARD,corner_radius=18)
-        center.place(relx=0.5,rely=0.5,anchor="center")
-        logo=load_logo("Imagotipo_Space_CadetAmarillo_Hunyadi_con_tinta.png",(110,110))
-        if logo: ctk.CTkLabel(center,image=logo,text="").pack(pady=(24,4))
-        lbl(center,"El Tintero",size=24,bold=True,color=C_CREAM).pack()
-        lbl(center,"Taller Literario",size=13,color=C_MUTED).pack(pady=(0,18))
-        self._pw=ctk.CTkEntry(center,placeholder_text="Contraseña",show="●",width=290,
-                              fg_color=C_CARD2,border_color=C_MUTED,
-                              text_color=C_CREAM,placeholder_text_color=C_MUTED)
-        self._pw.pack(pady=(0,6)); self._pw.bind("<Return>",lambda e:self._login())
-        self._err=lbl(center,"",color=C_RED,size=12); self._err.pack()
-        pbtn(center,"Ingresar",self._login,w=230).pack(pady=(8,28))
+        self._lf = ctk.CTkFrame(self, fg_color=C_NAVY)
+        self._lf.place(relx=0, rely=0, relwidth=1, relheight=1)
+
+        # Panel central con borde dorado sutil
+        center = ctk.CTkFrame(self._lf, fg_color=C_CARD, corner_radius=20,
+                              border_width=1, border_color=C_LINE)
+        center.place(relx=0.5, rely=0.5, anchor="center")
+
+        logo = load_logo("Logo_El_Tintero.png", (100,100))
+        if logo:
+            ctk.CTkLabel(center, image=logo, text="").pack(pady=(28,6))
+
+        title_lbl(center, "El Tintero", size=28, color=C_CREAM).pack()
+        lbl(center, "Taller Literario", size=13, color=C_GOLD).pack(pady=(2,0))
+        accentbar(center, C_GOLD).pack(fill="x", padx=40, pady=(6,20))
+
+        self._pw = ctk.CTkEntry(center, placeholder_text="Contraseña de acceso",
+                                show="●", width=300,
+                                fg_color=C_CARD2, border_color=C_LINE,
+                                text_color=C_CREAM, placeholder_text_color=C_MUTED,
+                                font=F_body(13))
+        self._pw.pack(pady=(0,6))
+        self._pw.bind("<Return>", lambda e: self._login())
+        self._pw.focus_set()
+        self._err = lbl(center, "", color=C_RED, size=12); self._err.pack()
+        pbtn(center, "Ingresar", self._login, w=240).pack(pady=(8,28))
 
     def _login(self):
-        if self._pw.get()==APP_PASSWORD:
-            self._lf.destroy(); self._build()
+        if self._pw.get() == get_password():
+            self._lf.destroy()
+            self._build()
         else:
             self._err.configure(text="Contraseña incorrecta")
-            self._pw.delete(0,"end")
+            self._pw.delete(0, "end")
 
-    # ── MAIN APP ──────────────────────────────
+    # ══════════════════════════════════════════
+    # APP PRINCIPAL
+    # ══════════════════════════════════════════
     def _build(self):
-        tabs=ctk.CTkTabview(self,fg_color=C_NAVY2,
-                            segmented_button_selected_color=C_GOLD,
-                            segmented_button_selected_hover_color=_dark(C_GOLD),
-                            segmented_button_unselected_color=C_CARD,
-                            segmented_button_unselected_hover_color=C_CARD2,
-                            text_color=C_CREAM, border_color=C_CARD)
-        tabs.pack(fill="both",expand=True,padx=8,pady=8)
+        tabs = ctk.CTkTabview(self, fg_color=C_NAVY2,
+                              segmented_button_selected_color=C_GOLD,
+                              segmented_button_selected_hover_color=_dark(C_GOLD),
+                              segmented_button_unselected_color=C_CARD,
+                              segmented_button_unselected_hover_color=C_CARD2,
+                              text_color=C_CREAM, border_color=C_LINE,
+                              segmented_button_fg_color=C_CARD)
+        tabs.pack(fill="both", expand=True, padx=8, pady=8)
 
         # ── EL TINTERO ──────────────────────
-        t1 = tabs.add("🖊  El Tintero"); t1.configure(fg_color=C_NAVY)
-        self._hdr(t1, "Imagotipo_Space_CadetAmarillo_Hunyadi_con_tinta.png", "El Tintero", "Taller Literario", C_CREAM)
+        t1 = tabs.add("  🖊  El Tintero  "); t1.configure(fg_color=C_NAVY)
+        self._hdr(t1, "Logo_El_Tintero.png",
+                  "El Tintero", "Taller Literario", C_CREAM)
 
         sub1 = ctk.CTkTabview(t1, fg_color=C_NAVY,
                               segmented_button_selected_color=C_GOLD,
                               segmented_button_selected_hover_color=_dark(C_GOLD),
                               segmented_button_unselected_color=C_CARD,
                               segmented_button_unselected_hover_color=C_CARD2,
-                              text_color=C_CREAM)
+                              text_color=C_CREAM,
+                              segmented_button_fg_color=C_CARD2)
         sub1.pack(fill="both", expand=True)
 
-        # Callback de sincronización — se define DESPUÉS de crear los widgets
         def on_sc():
             self._acc_t.refresh()
             self._acc_e.refresh()
@@ -1115,15 +1231,17 @@ class App(ctk.CTk):
         self._ev.pack(fill="both", expand=True)
 
         # ── NORTE COPY ──────────────────────
-        t2 = tabs.add("🧭  Norte Copy"); t2.configure(fg_color=C_NAVY)
-        self._hdr(t2, "NorteCopywritingSolutions.png", "Norte", "Copywriting Solutions", C_GOLD)
+        t2 = tabs.add("  🧭  Norte Copy  "); t2.configure(fg_color=C_NAVY)
+        self._hdr(t2, "NorteCopywritingSolutions.png",
+                  "Norte", "Copywriting Solutions", C_GOLD)
 
         sub2 = ctk.CTkTabview(t2, fg_color=C_NAVY,
                               segmented_button_selected_color=C_GOLD,
                               segmented_button_selected_hover_color=_dark(C_GOLD),
                               segmented_button_unselected_color=C_CARD,
                               segmented_button_unselected_hover_color=C_CARD2,
-                              text_color=C_CREAM)
+                              text_color=C_CREAM,
+                              segmented_button_fg_color=C_CARD2)
         sub2.pack(fill="both", expand=True)
 
         def on_cc():
@@ -1137,13 +1255,117 @@ class App(ctk.CTk):
         self._tasks = CopyTasksTab(t_ta, self.db)
         self._tasks.pack(fill="both", expand=True)
 
-    def _hdr(self,parent,logo_file,title,subtitle,tc):
-        h=ctk.CTkFrame(parent,fg_color=C_NAVY2,corner_radius=0)
-        h.pack(fill="x",side="top")
-        logo=load_logo(logo_file,(44,44))
-        if logo: ctk.CTkLabel(h,image=logo,text="").pack(side="left",padx=(12,8),pady=6)
-        lbl(h,title,size=18,bold=True,color=tc).pack(side="left")
-        lbl(h,subtitle,size=12,color=C_MUTED).pack(side="left",padx=8)
+        # ── CONFIGURACIÓN ───────────────────
+        t3 = tabs.add("  ⚙  Config  "); t3.configure(fg_color=C_NAVY)
+        self._cfg_panel = ConfigPanel(t3, on_logout=self._logout)
+        self._cfg_panel.pack(fill="both", expand=True)
+
+    # ══════════════════════════════════════════
+    # HEADER REUTILIZABLE
+    # ══════════════════════════════════════════
+    def _hdr(self, parent, logo_file, title, subtitle, tc):
+        h = ctk.CTkFrame(parent, fg_color=C_CARD2, corner_radius=0, height=58)
+        h.pack(fill="x", side="top"); h.pack_propagate(False)
+        # Barra de acento izquierda
+        ctk.CTkFrame(h, width=4, fg_color=C_GOLD, corner_radius=0).pack(side="left", fill="y")
+        logo = load_logo(logo_file, (40, 40))
+        if logo:
+            ctk.CTkLabel(h, image=logo, text="").pack(side="left", padx=(12,10), pady=9)
+        vline = ctk.CTkFrame(h, width=1, fg_color=C_LINE); vline.pack(side="left", fill="y", pady=10)
+        col = ctk.CTkFrame(h, fg_color="transparent"); col.pack(side="left", padx=12, pady=6)
+        title_lbl(col, title, size=17, color=tc).pack(anchor="w")
+        lbl(col, subtitle, size=11, color=C_MUTED).pack(anchor="w")
+
+    # ══════════════════════════════════════════
+    # LOGOUT / CERRAR SESIÓN
+    # ══════════════════════════════════════════
+    def _logout(self):
+        for w in self.winfo_children(): w.destroy()
+        self._show_login()
+
+
+# ══════════════════════════════════════════════
+# PANEL DE CONFIGURACIÓN
+# ══════════════════════════════════════════════
+class ConfigPanel(ctk.CTkFrame):
+    def __init__(self, parent, on_logout=None):
+        super().__init__(parent, fg_color="transparent")
+        self.on_logout = on_logout
+        self._build()
+
+    def _build(self):
+        # Scroll container
+        sf = sframe(self); sf.pack(fill="both", expand=True, padx=16, pady=16)
+
+        # ── Título ──
+        title_lbl(sf, "Configuración", size=22, color=C_CREAM).pack(anchor="w", pady=(0,2))
+        lbl(sf, "Ajustes del sistema y cuenta", size=12, color=C_MUTED).pack(anchor="w")
+        accentbar(sf, C_GOLD).pack(fill="x", pady=(8,20))
+
+        # ── Cambiar contraseña ──
+        pw_card = cframe(sf); pw_card.pack(fill="x", pady=(0,12))
+        accentbar(pw_card, C_GOLD, 3).pack(fill="x")
+        body = ctk.CTkFrame(pw_card, fg_color="transparent"); body.pack(fill="x", padx=16, pady=14)
+        title_lbl(body, "Contraseña de acceso", size=15, color=C_CREAM).pack(anchor="w")
+        lbl(body, "Modificá la contraseña con la que ingresás al sistema.", size=12, color=C_MUTED).pack(anchor="w", pady=(2,12))
+
+        r1 = ctk.CTkFrame(body, fg_color="transparent"); r1.pack(fill="x", pady=2)
+        lbl(r1, "Contraseña actual", size=12, color=C_MUTED).pack(anchor="w")
+        self.e_cur = ctk.CTkEntry(r1, show="●", width=320, fg_color=C_CARD2,
+                                  border_color=C_LINE, text_color=C_CREAM,
+                                  placeholder_text_color=C_MUTED, font=F_body(13))
+        self.e_cur.pack(anchor="w", pady=(2,8))
+        lbl(r1, "Nueva contraseña", size=12, color=C_MUTED).pack(anchor="w")
+        self.e_new = ctk.CTkEntry(r1, show="●", width=320, fg_color=C_CARD2,
+                                  border_color=C_LINE, text_color=C_CREAM,
+                                  placeholder_text_color=C_MUTED, font=F_body(13))
+        self.e_new.pack(anchor="w", pady=(2,8))
+        lbl(r1, "Repetir nueva contraseña", size=12, color=C_MUTED).pack(anchor="w")
+        self.e_rep = ctk.CTkEntry(r1, show="●", width=320, fg_color=C_CARD2,
+                                  border_color=C_LINE, text_color=C_CREAM,
+                                  placeholder_text_color=C_MUTED, font=F_body(13))
+        self.e_rep.pack(anchor="w", pady=(2,8))
+        self.pw_msg = lbl(r1, "", color=C_RED, size=12); self.pw_msg.pack(anchor="w")
+        pbtn(r1, "Cambiar contraseña", self._change_pw, color=C_GOLD).pack(anchor="w", pady=(6,0))
+
+        # ── Acerca del sistema ──
+        sep(sf).pack(fill="x", pady=16)
+        info_card = cframe(sf); info_card.pack(fill="x", pady=(0,12))
+        accentbar(info_card, C_BLUE, 3).pack(fill="x")
+        info_body = ctk.CTkFrame(info_card, fg_color="transparent"); info_body.pack(fill="x", padx=16, pady=14)
+        title_lbl(info_body, "Acerca del sistema", size=15, color=C_CREAM).pack(anchor="w")
+        for line in [
+            "El Tintero — Sistema de gestión para talleres literarios",
+            "Desarrollado con Python 3 + CustomTkinter",
+            "Base de datos local SQLite · Sin dependencias en la nube",
+        ]:
+            lbl(info_body, line, size=12, color=C_MUTED).pack(anchor="w", pady=1)
+
+        # ── Cerrar sesión ──
+        sep(sf).pack(fill="x", pady=16)
+        logout_card = cframe(sf); logout_card.pack(fill="x", pady=(0,12))
+        accentbar(logout_card, C_RED, 3).pack(fill="x")
+        lo_body = ctk.CTkFrame(logout_card, fg_color="transparent"); lo_body.pack(fill="x", padx=16, pady=14)
+        title_lbl(lo_body, "Cerrar sesión", size=15, color=C_CREAM).pack(anchor="w")
+        lbl(lo_body, "Volvés a la pantalla de inicio de sesión.", size=12, color=C_MUTED).pack(anchor="w", pady=(2,10))
+        pbtn(lo_body, "Cerrar sesión", self._logout, color=C_RED, w=180).pack(anchor="w")
+
+    def _change_pw(self):
+        cur = self.e_cur.get()
+        new = self.e_new.get()
+        rep = self.e_rep.get()
+        if cur != get_password():
+            self.pw_msg.configure(text="La contraseña actual es incorrecta", text_color=C_RED); return
+        if len(new) < 4:
+            self.pw_msg.configure(text="Mínimo 4 caracteres", text_color=C_RED); return
+        if new != rep:
+            self.pw_msg.configure(text="Las contraseñas no coinciden", text_color=C_RED); return
+        set_password(new)
+        for e in [self.e_cur, self.e_new, self.e_rep]: e.delete(0, "end")
+        self.pw_msg.configure(text="✓  Contraseña actualizada correctamente", text_color=C_GREEN)
+
+    def _logout(self):
+        if self.on_logout: self.on_logout()
 
 
 if __name__=="__main__":
