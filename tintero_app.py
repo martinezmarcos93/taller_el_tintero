@@ -4,7 +4,7 @@
 
 import customtkinter as ctk
 from tkinter import messagebox
-import sqlite3, json
+import sqlite3, json, sys, os
 from datetime import datetime
 from pathlib import Path
 
@@ -17,9 +17,39 @@ except ImportError:
 # ──────────────────────────────────────────────
 # CONFIG
 # ──────────────────────────────────────────────
-DB_PATH    = "tintero.db"
-ASSETS     = Path("assets")
-CFG_PATH   = Path("tintero_config.json")
+
+# Carpeta donde vive el .exe (o el script en desarrollo)
+if getattr(sys, "frozen", False):
+    # Ejecutable compilado con PyInstaller
+    _EXE_DIR = Path(sys.executable).parent
+else:
+    # Script en desarrollo
+    _EXE_DIR = Path(__file__).parent
+
+# Datos escribibles: junto al .exe si se puede, si no en APPDATA
+def _get_data_dir() -> Path:
+    """Devuelve una carpeta donde siempre se puede escribir."""
+    # Primero intentamos junto al .exe (instalación en carpeta propia, portable)
+    candidate = _EXE_DIR
+    try:
+        candidate.mkdir(parents=True, exist_ok=True)
+        test = candidate / ".write_test"
+        test.touch()
+        test.unlink()
+        return candidate
+    except OSError:
+        pass
+    # Fallback: AppData\Roaming\ElTintero  (siempre escribible en Windows)
+    appdata = Path(os.environ.get("APPDATA", Path.home())) / "ElTintero"
+    appdata.mkdir(parents=True, exist_ok=True)
+    return appdata
+
+_DATA_DIR  = _get_data_dir()
+DB_PATH    = str(_DATA_DIR / "tintero.db")
+CFG_PATH   = _DATA_DIR / "tintero_config.json"
+
+# Assets (solo lectura, siempre junto al .exe)
+ASSETS = _EXE_DIR / "assets"
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
