@@ -64,7 +64,7 @@ python tintero_app.py
 ├── tintero_config.json         # Configuración del sistema (se crea en el primer uso)
 │
 └── 📁 assets/
-    ├── Imagotipo_Space_CadetAmarillo_Hunyadi_con_tinta.png   # Logo El Tintero
+    ├── Logo_El_Tintero.png                                    # Logo El Tintero
     └── NorteCopywritingSolutions.png                          # Logo Norte Copywriting
 ```
 
