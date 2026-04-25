@@ -1,0 +1,32 @@
+# Compilación
+dist/
+build/
+output_instalador/
+instalador/
+*.spec
+
+# Datos locales
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+env/
+venv/
+*.egg-info/
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Logs y bases de datos
+*.log
+*.db
